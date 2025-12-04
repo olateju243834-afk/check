@@ -1,5 +1,6 @@
 Flask
 Flask-Mail
-psycopg
+Flask-SQLAlchemy
+psycopg[binary]
 Werkzeug
 gunicorn
