@@ -10,6 +10,7 @@
     {% endfor %}
 {% endfor %}
 
+
 {% set total_points = 0 %}
 {% set total_units = 0 %}
 {% for r in all_results %}
@@ -18,9 +19,15 @@
 {% endfor %}
 {% set cgpa = (total_points / total_units) if total_units > 0 else 0.0 %}
 
+<div class="student-info">
+    <p><strong>Name:</strong> {{ student.name }}</p>
+    <p><strong>Matric Number:</strong> {{ student.matric_number }}</p>
+    <p><strong>Level:</strong> {{ student.level }}L</p>
+</div>
+
 <div class="stats-grid">
     <div class="stat-card">
-        <div class="stat-number">{{ student.level }}L</div>
+        <div class="stat-number">{{ student.level }}</div>
         <div class="stat-label">Current Level</div>
     </div>
     <div class="stat-card">
