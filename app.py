@@ -298,20 +298,23 @@ def get_current_student():
     student_id = session.get(STUDENT_SESSION_KEY)
     if not student_id:
         return None
-    
+
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT * FROM students WHERE id = %s", (student_id,))
         row = cur.fetchone()
-        cur.close()
-        conn.close()
 
         if row is None:
+            cur.close()
+            conn.close()
             return None
 
-        # Assuming your cursor.description is available
+        # Only use description if row exists
         student = {desc[0]: value for desc, value in zip(cur.description, row)}
+
+        cur.close()
+        conn.close()
         return student
 
     except Exception as e:
