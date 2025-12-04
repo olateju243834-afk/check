@@ -565,105 +565,85 @@ def handle_payment_submission():
 # =========================================================
 @app.route('/student/login', methods=['GET', 'POST'])
 def student_login():
-    """Student login route - separate from admin."""
-    if STUDENT_SESSION_KEY in session:
-        return redirect(url_for('student_dashboard'))
-    
     if request.method == 'POST':
-        matric_number = request.form.get('matric_number', '').strip()
-        password = request.form.get('password', '')
-        
-        try:
-            conn = get_db_connection()
-            with conn.cursor() as cur:
-                cur.execute("SELECT * FROM students WHERE matric_number = %s", (matric_number,))
-                student = cur.fetchone()
-                
-                if student and check_password_hash(student['password_hash'], password):
-                    if not student.get('is_active', True):
-                        flash('Your account is inactive. Contact the department.', 'error')
-                        conn.close()
-                        return render_template('login.html')
-                    
-                    # Set student session
-                    session[STUDENT_SESSION_KEY] = student['id']
-                    session.permanent = True
-                    flash(f'Welcome, {student["name"]}!', 'success')
-                    conn.close()
-                    
-                    next_page = request.args.get('next')
-                    return redirect(next_page or url_for('student_dashboard'))
-                else:
-                    flash('Invalid matric number or password', 'error')
-            conn.close()
-        except Exception as e:
-            flash('Error during login. Please try again.', 'error')
-            app.logger.error(f"Student login error: {e}")
-    
-    return render_template('login.html')
+        email = request.form['email']
+        password = request.form['password']
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("SELECT * FROM students WHERE email = %s", (email,))
+        student = cur.fetchone()
+
+        cur.close()
+        conn.close()
+
+        if not student:
+            flash("Invalid email or password.", "error")
+            return render_template("login.html")
+
+        # Student returned as dict_row, so access like student['column']
+        if not check_password_hash(student['password_hash'], password):
+            flash("Invalid email or password.", "error")
+            return render_template("login.html")
+
+        # 🔥 Critical fix — block inactive users (NULL or FALSE both treated safely)
+        if not bool(student['is_active']):
+            flash("Your account is not yet approved by the admin.", "error")
+            return render_template("login.html")
+
+        # Login successful -> save session
+        session['student_id'] = student['id']
+        session['student_name'] = student['name']
+
+        return redirect(url_for('student_dashboard'))
+
+    return render_template("login.html")
 
 @app.route('/student/register', methods=['GET', 'POST'])
 def student_register():
-    """Student registration route."""
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        matric_number = request.form.get('matric_number', '').strip()
-        try:
-            level = int(request.form.get('level', '100'))
-        except ValueError:
-            level = 100
-        department = request.form.get('department', '').strip()
-        email = request.form.get('email', '').strip()
-        phone = request.form.get('phone', '').strip()
-        password = request.form.get('password', '')
-        confirm_password = request.form.get('confirm_password', '')
-        
-        # Validation
-        if not all([name, matric_number, password, confirm_password]):
-            flash('Please fill in all required fields', 'error')
-            return render_template('register.html')
-        
-        if not validate_matric_number(matric_number):
-            flash('Invalid matric number format. Use 6 digits.', 'error')
-            return render_template('register.html')
-        
-        if password != confirm_password:
-            flash('Passwords do not match', 'error')
-            return render_template('register.html')
-        
-        if len(password) < 6:
-            flash('Password must be at least 6 characters', 'error')
-            return render_template('register.html')
-        
-        if level not in ALLOWED_LEVELS:
-            flash('Invalid level', 'error')
-            return render_template('register.html')
-        
+        name = request.form['name']
+        matric_number = request.form['matric_number']
+        level = request.form['level']
+        department = request.form['department']
+        email = request.form['email']
+        phone = request.form['phone']
+        password = request.form['password']
+
+        password_hash = generate_password_hash(password)
+
         try:
             conn = get_db_connection()
-            with conn.cursor() as cur:
-                # Check if matric number exists
-                cur.execute("SELECT id FROM students WHERE matric_number = %s", (matric_number,))
-                if cur.fetchone():
-                    flash('This matric number is already registered', 'error')
-                    conn.close()
-                    return render_template('register.html')
-                
-                # Insert new student
-                password_hash = generate_password_hash(password)
-                cur.execute("""
-                    INSERT INTO students (name, matric_number, level, department, email, phone, password_hash)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """, (name, matric_number, level, department, email, phone, password_hash))
-                conn.commit()
+            cur = conn.cursor()
+
+            # Make sure matric and email are unique
+            cur.execute("SELECT * FROM students WHERE email = %s OR matric_number = %s",
+                        (email, matric_number))
+            existing = cur.fetchone()
+
+            if existing:
+                flash("Student with this email or matric number already exists.", "error")
+                return render_template("register.html")
+
+            # Insert with is_active = FALSE
+            cur.execute("""
+                INSERT INTO students
+                (name, matric_number, level, department, email, phone, password_hash, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, FALSE)
+            """, (name, matric_number, level, department, email, phone, password_hash))
+
+            conn.commit()
+            cur.close()
             conn.close()
-            
-            flash('Registration successful! Please log in.', 'success')
+
+            flash("Registration successful! Please wait for admin approval.", "success")
             return redirect(url_for('student_login'))
+
         except Exception as e:
-            flash('Error during registration. Please try again.', 'error')
-            app.logger.error(f"Student registration error: {e}")
-    
+            flash("Registration failed. Try again.", "error")
+            print(e)
+
     return render_template('register.html')
 
 @app.route('/student/logout')
