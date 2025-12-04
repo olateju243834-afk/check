@@ -594,13 +594,14 @@ def student_login():
             flash("Your account is not yet approved by the admin.", "error")
             return render_template("login.html")
 
-        # Successful login
-        session['student_id'] = student['id']
+        # Successful login → use STUDENT_SESSION_KEY
+        session[STUDENT_SESSION_KEY] = student['id']
         session['student_name'] = student['name']
 
         return redirect(url_for('student_dashboard'))
 
     return render_template("login.html")
+
 
 @app.route('/student/register', methods=['GET', 'POST'])
 def student_register():
