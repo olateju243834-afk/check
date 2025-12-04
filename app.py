@@ -570,8 +570,8 @@ def student_login():
         email = request.form.get('email')
         password = request.form.get('password')
 
-        if not identifier or not password:
-            flash("Both identifier and password are required.", "error")
+        if not email or not password:
+            flash("Required.", "error")
             return render_template("login.html")
 
         conn = get_db_connection()
