@@ -611,7 +611,7 @@ def student_register():
         name = request.form['name']
         matric_number = request.form['matric_number']
         level = request.form['level']
-        department = request.form['department']
+        department = request.form.get('department').strip
         email = request.form['email']
         phone = request.form['phone']
         password = request.form['password']
