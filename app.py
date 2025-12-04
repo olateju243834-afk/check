@@ -567,7 +567,7 @@ def handle_payment_submission():
 def student_login():
     if request.method == 'POST':
         # Use 'identifier' to match your HTML form
-        identifier = request.form.get('identifier')
+        email = request.form.get('email')
         password = request.form.get('password')
 
         if not identifier or not password:
