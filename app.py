@@ -301,14 +301,23 @@ def get_current_student():
     
     try:
         conn = get_db_connection()
-        with conn.cursor() as cur:
-            cur.execute("SELECT * FROM students WHERE id = %s", (student_id,))
-            student = cur.fetchone()
-            conn.close()
-            return student
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM students WHERE id = %s", (student_id,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if row is None:
+            return None
+
+        # Assuming your cursor.description is available
+        student = {desc[0]: value for desc, value in zip(cur.description, row)}
+        return student
+
     except Exception as e:
         app.logger.error(f"Error getting current student: {e}")
         return None
+
 
 def get_current_admin():
     """Get the currently logged-in admin."""
