@@ -566,39 +566,35 @@ def handle_payment_submission():
 @app.route('/student/login', methods=['GET', 'POST'])
 def student_login():
     if request.method == 'POST':
-        # Use 'identifier' to match your HTML form
-        email = request.form.get('email')
+        email = request.form.get('email')  # safer than request.form['email']
         password = request.form.get('password')
 
         if not email or not password:
-            flash("Required.", "error")
+            flash("Both email and password are required.", "error")
             return render_template("login.html")
 
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Fetch student by matric number (identifier)
-        cur.execute("SELECT * FROM students WHERE matric_number = %s", (identifier,))
+        cur.execute("SELECT * FROM students WHERE email = %s", (email,))
         student = cur.fetchone()
 
         cur.close()
         conn.close()
 
         if not student:
-            flash("Invalid matric number or password.", "error")
+            flash("Invalid email or password.", "error")
             return render_template("login.html")
 
-        # Check password
         if not check_password_hash(student['password_hash'], password):
-            flash("Invalid matric number or password.", "error")
+            flash("Invalid email or password.", "error")
             return render_template("login.html")
 
-        # Block inactive users
         if not bool(student['is_active']):
             flash("Your account is not yet approved by the admin.", "error")
             return render_template("login.html")
 
-        # Login successful -> save session
+        # Successful login
         session['student_id'] = student['id']
         session['student_name'] = student['name']
 
